@@ -4,7 +4,7 @@
 
 (in-package #:cl-rltuto-raylib)
 
-(define-entity cell (impassable opaque))
+(define-entity cell (impassable opaque terrain avatar))
 
 (defmethod entity-created :after ((e cell))
   "if a cell is impassable, it is also opaque by default"
@@ -21,9 +21,8 @@
         (setf avatar ""))))
 
 (defmethod move ((c creature) dx dy)
+  "create movement in a scene"
   (let ((x (slot-value c 'location/x))
         (y (slot-value c 'location/y)))
-    ;(format t "move x:~a y:~a dx:~a dy:~a~%" x y dx dy)
     (setf (slot-value c 'location/x) (mod (+ x dx) *scene-width*))
-    (setf (slot-value c 'location/y) (mod (+ y dy) *scene-height*))
-    ))
+    (setf (slot-value c 'location/y) (mod (+ y dy) *scene-height*))))

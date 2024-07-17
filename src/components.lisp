@@ -10,6 +10,12 @@
 (define-aspect opaque
                (state :initform nil :documentation "cannot be seen through"))
 
+(defparameter *terrains-kinds* (list 'ground
+                                     'wall))
+
+(define-aspect terrain
+               (terrain :initform 'ground  :documentation "terrain kind"))
+
 (define-aspect visible
                (state :initform T :documentation "can be seen"))
 

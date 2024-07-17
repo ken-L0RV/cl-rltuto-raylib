@@ -9,7 +9,9 @@
                 #:destroy-entity
                 #:define-system
                 #:entity-created
-                #:entity-destroyed)
+                #:entity-destroyed
+                #:clear-entities
+                )
   (:import-from #:raylib
                 #:with-window
                 #:set-target-fps

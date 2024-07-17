@@ -17,7 +17,13 @@
   "instantantiate a scene cells"
   (dotimes (y (scene/h s))
     (dotimes (x (scene/w s))
-      (setf (aref (scene/cells s) x y) (create-entity 'cell)))))
+      (setf (aref (scene/cells s) x y) (create-entity 'cell))))
+  ;; call map procgen to set terrain here
+  (setf (aref (scene/cells s) 20 20) (create-entity 'cell :impassable/state T))
+  (setf (aref (scene/cells s) 20 21) (create-entity 'cell :impassable/state T))
+  (setf (aref (scene/cells s) 19 22) (create-entity 'cell :impassable/state T))
+  (setf (aref (scene/cells s) 20 22) (create-entity 'cell :impassable/state T))
+  )
 
 (defmethod print-scene ((s scene))
   "scene object print"
@@ -33,3 +39,15 @@
   "scene constructor - cells must still be initialised afterwards"
   (let (s)
     (setf s (make-instance 'scene :w width :h height))))
+
+(defmethod init-scene ((s scene))
+  "init scene with creatures (everything but terrain is a creature"
+  (dotimes (y (scene/h s))
+    (dotimes (x (scene/w s))
+      (let ((cell (aref (scene/cells s) x y)))
+        (when (slot-value cell 'opaque/state)
+          (create-entity 'creature
+                         :location/x x
+                         :location/y y
+                         :avatar/visual "#"
+                         :avatar/color :black))))))
