@@ -12,7 +12,6 @@
 
 (defparameter *terrains-kinds* (list 'ground
                                      'wall))
-
 (define-aspect terrain
                (terrain :initform 'ground  :documentation "terrain kind"))
 
@@ -26,3 +25,6 @@
 (define-aspect avatar
                (visual :initform "" :documentation "has a visual representation")
                (color :initform :red :documentation "visual representation color")) 
+
+(define-aspect shape
+               (vertex :initform "" :documentation "list of vertex coordinates"))

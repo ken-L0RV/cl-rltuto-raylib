@@ -19,7 +19,7 @@
 (defun draw-cell (cell x y)
   "draw a cell"
   (let  ((color))
-        (if (slot-value cell 'opaque/state)
+        (if (slot-value cell 'impassable/state)
             (setf color :darkgray)
             (setf color :gray))
         (draw-rectangle (+ *grid-origin-x* (* x *cell-size*))
