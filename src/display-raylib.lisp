@@ -19,7 +19,7 @@
 (defun draw-cell (cell x y)
   "draw a cell"
   (let  ((color))
-        (if (slot-value cell 'impassable/state)
+        (if (slot-value cell 'impassable/impassable)
             (setf color :darkgray)
             (setf color :gray))
         (draw-rectangle (+ *grid-origin-x* (* x *cell-size*))
@@ -30,8 +30,8 @@
 
 (defun draw-creature (creature)
   "draws a creature visual at x y on a cell grid"
-      (let ((visual (slot-value creature 'avatar/visual))
-            (color (slot-value creature 'avatar/color))
+      (let ((visual (slot-value creature 'visual/visual))
+            (color (slot-value creature 'visual/color))
             (x (slot-value creature 'location/x))
             (y (slot-value creature 'location/y)))
         (draw-text visual
@@ -47,6 +47,10 @@
     (when (is-key-pressed :key-up) (setf action (list :movement (cons 0 -1))))
     action))
 
+(defmethod draw-scene ((s scene))
+  "scene draw call"
+  (draw-cell-grid (scene/w s) (scene/h s) (scene/cells s)))
+
 (defun draw-screen (player scene)
   (with-window (*screen-width* *screen-height* "roguelike tuto w/ raylib in cl")
     (set-target-fps 60)
@@ -61,7 +65,7 @@
                  (cells (scene/cells scene))
                  (cell (aref cells (+ player-x (car movement)) (+ player-y (cdr movement))))
                 )
-            (unless (slot-value cell 'impassable/state)
+            (unless (slot-value cell 'impassable/impassable)
               (move player (car movement) (cdr movement)))))
         (with-drawing
           (clear-background :black)

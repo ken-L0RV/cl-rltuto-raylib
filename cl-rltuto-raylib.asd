@@ -12,7 +12,7 @@
                (:file "src/entities")
                (:file "src/systems")
                (:file "src/scene")
-               (:file "src/display")
+               (:file "src/procgen")
                (:file "src/display-raylib")
                (:file "src/cl-rltuto-raylib")
                ))
