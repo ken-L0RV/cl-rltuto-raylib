@@ -27,18 +27,14 @@
 (defmethod init-scene-cells ((s scene))
   (let ((spawn-cell))
     (setf spawn-cell (procgen-scene-basic s *max-rooms* *room-min-size* *room-max-size* *scene-width* *scene-height*))
+    ;; testing map
+    ;(setf spawn-cell (procgen-scene-basic s 1 33 34 *scene-width* *scene-height*))
     spawn-cell))
 
 (defmethod init-scene-creatures ((s scene))
   "initalise scene w/ player & procgen creatures"
   (let ((creatures))
-    (setf creatures (generate-creatures s))
-    ;(format t "creatures ~a~%" creatures)
-    ))
-
-;(defmethod init-scene-items ((s scene))
-;  "initialise scene w/ procgen items"
-;  (generate-items s))
+    (setf creatures (generate-creatures s))))
 
 (defun start-drawing (player scene)
   (draw-screen player scene))
@@ -47,11 +43,14 @@
   "main game function"
   ;; game initialisation
   (setf *main-scene* (make-scene *scene-width* *scene-height*))
-  (setf *player* (create-entity 'creature :visual/visual "@" :visual/color :white))
+  (setf *player* (create-entity 'creature :visual/visual "@" :visual/color :white :perceptive/perceptive T))
   (let ((starting-room (init-scene-cells *main-scene*)))
     (spawn-player *player* starting-room)
-    ;(init-scene-items *main-scene*)
+    ;(setf *player* (make-player (find-center-rectangle-room starting-room)))
     (init-scene-creatures *main-scene*))
+
+  (cast-light *main-scene* (list (slot-value *player* 'location/x) (slot-value *player* 'location/y)))
+
   ;; game loop
   (start-drawing *player* *main-scene*)
   ;; cleanup

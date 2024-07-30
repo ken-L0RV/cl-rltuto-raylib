@@ -10,11 +10,14 @@
 (define-aspect opaque
                (opaque :initform nil :documentation "cannot be seen through"))
 
-(define-aspect terrain
-               (terrain :initform :ground :documentation "terrain kind"))
-
 (define-aspect visible
                (visible :initform nil :documentation "can be seen"))
+
+(define-aspect discovered
+               (discovered :initform nil :documentation "has been seen by the player"))
+
+(define-aspect terrain
+               (terrain :initform :ground :documentation "terrain kind"))
 
 (define-aspect location
                (x :initform 0 :documentation "x pos in current scene")
@@ -26,3 +29,6 @@
 
 (define-aspect shape
                (vertices :initform nil :documentation "list of a shape vertices (x,y)"))
+
+(define-aspect perceptive
+               (perceptive :initform nil :documentation "can perceive its environment"))

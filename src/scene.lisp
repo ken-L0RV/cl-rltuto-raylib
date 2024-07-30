@@ -32,3 +32,17 @@
   "scene constructor - cells must still be initialised afterwards"
   (let (s)
     (setf s (make-instance 'scene :w width :h height))))
+
+(defmethod get-cell ((s scene) coords)
+  (with-slots ((cells cells)) s
+    (aref cells (car coords) (cadr coords))))
+
+(defmethod reveal-scene ((s scene))
+  (dotimes (y (scene/h s))
+    (dotimes (x (scene/w s))
+      (reveal-cell (get-cell s (list x y))))))
+
+(defmethod reset-scene-visibility ((s scene))
+  (dotimes (y (scene/h s))
+    (dotimes (x (scene/w s))
+      (setf (slot-value (aref (scene/cells s) x y) 'visible/visible) nil))))

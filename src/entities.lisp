@@ -5,7 +5,7 @@
 (in-package #:cl-rltuto-raylib)
 
 ;;;; creature
-(define-entity creature (location visible visual))
+(define-entity creature (location visible visual perceptive))
 
 (defmethod entity-created :after ((e creature))
   "if a creature is invisible, it has no visual and if it has a visual, it is visible"
@@ -19,6 +19,9 @@
     (setf x (+ x dx))
     (setf y (+ y dy))))
 
+(defun make-player (pos)
+  (create-entity 'creature :location/x (car pos) :location/y (cadr pos) :visual/visual "@" :visual/color :white :perceptive/perceptive T))
+
 (defun make-npc (x y)
   (create-entity 'creature :location/x x :location/y y :visual/visual "@" :visual/color :yellow))
 
@@ -26,7 +29,7 @@
   (create-entity 'creature :location/x x :location/y y :visual/visual "#" :visual/color :black))
 
 ;;;; cell
-(define-entity cell (impassable opaque terrain visual))
+(define-entity cell (impassable opaque visible discovered terrain visual))
 
 (defmethod entity-created :after ((e cell))
   "if a cell is impassable, it is also opaque by default"
@@ -50,6 +53,32 @@
                                           (setf opaque nil)
                                           (setf terrain :water)
                                           (setf color :blue))))))
+
+(defmethod reveal-cell ((c cell))
+  (with-slots ((visible visible/visible)
+               (discovered discovered/discovered)) c
+    (setf visible T)
+    (setf discovered T)))
+
+(defmethod match-cell-terrain-p ((c cell) terrain)
+  (with-slots ((cell-terrain terrain/terrain)) c
+    (eq cell-terrain terrain)))
+
+(defmethod cell-impassable-p ((c cell))
+  (with-slots ((impassable impassable/impassable)) c
+    impassable))
+
+(defmethod cell-opaque-p ((c cell))
+  (with-slots ((opaque opaque/opaque)) c
+    opaque))
+
+(defmethod cell-visible-p ((c cell))
+  (with-slots ((visible visible/visible)) c
+    visible))
+
+(defmethod cell-discovered-p ((c cell))
+  (with-slots ((discovered discovered/discovered)) c
+    discovered))
 
 ;;;; rectangle-room
 (define-entity rectangle-room (shape))
@@ -76,8 +105,6 @@
     (cadadr v)))
 
 (defmethod intersects-rectangle-room-p ((r0 rectangle-room) (r1 rectangle-room))
-  ;(format t "r0 ~a ~a ~a ~a~%" (rectangle-x1 r0) (rectangle-x2 r0) (rectangle-y1 r0) (rectangle-y2 r0))
-  ;(format t "r1 ~a ~a ~a ~a~%" (rectangle-x1 r1) (rectangle-x2 r1) (rectangle-y1 r1) (rectangle-y2 r1))
   (and (<= (rectangle-x1 r0) (rectangle-x2 r1))
        (>= (rectangle-x2 r0) (rectangle-x1 r1))
        (<= (rectangle-y1 r0) (rectangle-y2 r1))

@@ -21,5 +21,7 @@
                 #:clear-background
                 #:draw-fps
                 #:draw-text
-                #:draw-rectangle)
+                #:draw-rectangle
+                #:get-color
+                #:make-rgba)
   (:export #:main))
