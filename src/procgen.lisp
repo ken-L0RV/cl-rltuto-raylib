@@ -31,7 +31,7 @@
             (update-terrain cell :ground)))))
 
 (defmethod procgen-scene-basic ((s scene) max-rooms room-min-size room-max-size scene-width scene-height)
-  (let ((num-rooms 0) (w 0) (h 0) (x 0) (y 0) (rooms (list nil)) (new-room) (invalid-location))
+  (let ((num-rooms 0) (w 0) (h 0) (x 0) (y 0) (rooms) (new-room) (invalid-location))
     (dotimes (r max-rooms)
       (setf invalid-location nil)
       (setf w (+ (random (- room-max-size room-min-size)) room-min-size))
@@ -39,18 +39,22 @@
       (setf x (random (- scene-width w)))
       (setf y (random (- scene-height h)))
       (setf new-room (create-entity 'rectangle-room :x x :y y :w w :h h))
-      (dotimes (other-room num-rooms)
-        (setf invalid-location (or invalid-location
-                                  (intersects-rectangle-room-p new-room (nth (1+ other-room) rooms)))))
+      (unless (null rooms)
+        (dotimes (other-room num-rooms)
+          (setf invalid-location (or invalid-location
+                                     (intersects-rectangle-room-p new-room (nth other-room rooms))))))
       (unless invalid-location
-        (push new-room (cdr (last rooms)))
+        (if (null rooms) ; TODO: fix rooms elem 1 being nil
+          (setf rooms (list new-room))
+          (push new-room (cdr (last rooms))))
         (build-rect-room s new-room)
         (setf num-rooms (1+ num-rooms))
         (when (>= num-rooms 2)
-          (let ((prev-x (car (find-center-rectangle-room (nth (- num-rooms 1) rooms))))
-                (prev-y (cadr (find-center-rectangle-room (nth (- num-rooms 1) rooms))))
-                (curr-x (car (find-center-rectangle-room (nth num-rooms rooms))))
-                (curr-y (cadr (find-center-rectangle-room (nth num-rooms rooms)))))
+          ;(format t "rooms ~a n-1 ~a n-2 ~a~%" rooms (nth (- num-rooms 1) rooms) (nth (- num-rooms 2) rooms))
+          (let ((prev-x (car (find-center-rectangle-room (nth (- num-rooms 2) rooms))))
+                (prev-y (cadr (find-center-rectangle-room (nth (- num-rooms 2) rooms))))
+                (curr-x (car (find-center-rectangle-room (nth (- num-rooms 1) rooms))))
+                (curr-y (cadr (find-center-rectangle-room (nth (- num-rooms 1) rooms)))))
             (if (= (random 2) 1)
                 (progn
                   (build-horizontal-corridor s (create-entity 'corridor :baseline prev-y :s prev-x :e curr-x))
@@ -58,27 +62,40 @@
                 (progn
                   (build-vertical-corridor s (create-entity 'corridor :baseline prev-x :s prev-y :e curr-y))
                   (build-horizontal-corridor s (create-entity 'corridor :baseline curr-y :s prev-x :e curr-x))))))))
-      (let ((spawn-room (nth 1 rooms)))
-        spawn-room)))
+    rooms))
 
-(defmethod generate-creatures ((s scene))
+(defmethod gen-walls ((s scene))
   (with-slots ((w width) (h height)) s
-    (let ((nb-creatures 0) (creatures (list nil)) (new-creature))
+    (let ((walls) (new-wall))
       (dotimes (y h)
         (dotimes (x w)
           (let ((cell (aref (scene/cells s) x y)))
-            (cond ((eq (slot-value cell 'terrain/terrain) :wall)
-                   (progn
-                     (setf new-creature (make-wall x y))
-                     (push new-creature (cdr (last creatures)))
-                     (1+ nb-creatures)))
-                  ((eq (slot-value cell 'terrain/terrain) :ground)
-                   (progn
-                     (when (= (random 100) 1)
-                       (setf new-creature (make-npc x y))
-                       (push new-creature (cdr (last creatures)))
-                       (1+ nb-creatures))))
-                  (T
-                   (format t "not supported terrain ~a~%" (slot-value cell 'terrain/terrain)))))))
-      creatures)))
+            (when (match-cell-terrain-p cell :wall)
+              (progn
+                (setf new-wall (spawn-creature (make-wall) x y))
+                (if (null walls)
+                    (setf walls (list new-wall))
+                    (push new-wall (cdr (last walls)))))))))
+      walls)))
 
+(defmethod gen-room-creatures ((room rectangle-room) creatures max-creatures-per-room)
+  (let ((num-creatures (random max-creatures-per-room)))
+    (dotimes (i num-creatures)
+      (let ((x (+ (random (- (rectangle-x2 room) (rectangle-x1 room) 1)) (1+ (rectangle-x1 room))))
+            (y (+ (random (- (rectangle-y2 room) (rectangle-y1 room) 1)) (1+ (rectangle-y1 room)))))
+        (unless (location-occupied-p creatures x y)
+          (if (> (random 100) 80)
+              (push (spawn-creature (make-troll) x y) (cdr (last creatures)))
+              (push (spawn-creature (make-orc) x y) (cdr (last creatures)))))))
+    creatures))
+
+(defun populate-rooms (rooms creatures max-creatures-per-room) 
+    (dolist (room rooms)
+      (let ((room-creatures (list nil)))
+        (gen-room-creatures room room-creatures max-creatures-per-room)
+        (setf room-creatures (cdr room-creatures)) ; remove nil first elem
+        (unless (null room-creatures)
+          ;(push room-creatures (cdr (last creatures)))
+          (nconc creatures room-creatures)
+          )))
+    creatures)

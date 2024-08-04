@@ -32,3 +32,6 @@
 
 (define-aspect perceptive
                (perceptive :initform nil :documentation "can perceive its environment"))
+
+(define-aspect name
+               (name :initform "" :documentation "has a name"))

@@ -17,42 +17,22 @@
         (r (logand (ash color -24) #xFF)))
     (list r g b a)))
 
-(defun alter-color-alpha (rgba coeff)
+(defun build-rgba (rgba)
   (let ((r (car rgba))
         (g (cadr rgba))
         (b (caddr rgba))
         (a (cadddr rgba)))
-    (setf a (truncate (* a coeff)))
-        (list r g b a)))
-
-(defun gen-alt-color (color coeff)
-  (let ((rgba (extract-rgba color))
-        (r) (g) (b) (a))
-    (setf rgba (alter-color-alpha rgba coeff))
-    (setf r (car rgba))
-    (setf g (cadr rgba))
-    (setf b (caddr rgba))
-    (setf a (cadddr rgba))
     (make-rgba r g b a)))
 
-;(extract-rgba (get-color :black))
-;(type-of :darkgray)
-;(defparameter *my-color* (make-rgba 127 106 79 255))
-;(extract-rgba *my-color*)
-;(defparameter *my-color2* (gen-alt-color *my-color* 0.5))
-;(extract-rgba *my-color2*)
+(defun alter-rgba-alpha (rgba coeff)
+  (let ((alpha (cadddr rgba)))
+    (setf (cadddr rgba) (truncate (* alpha coeff))))
+  rgba)
 
-(defun draw-cell (cell x y)
-  "draw a cell"
-  (let  ((color (slot-value cell 'visual/color)))
-    (when (and (cell-discovered-p cell)
-               (not (cell-visible-p cell)))
-      (setf color (gen-alt-color (get-color color) 0.5)))
-    (draw-rectangle (+ *grid-origin-x* (* x *cell-size*))
-                    (+ *grid-origin-y* (* y *cell-size*))
-                    *cell-size*
-                    *cell-size*
-                    color)))
+(defun gen-alt-color (color coeff)
+  (let ((rgba (extract-rgba color)))
+    (setf rgba (alter-rgba-alpha rgba coeff))
+    (build-rgba rgba)))
 
 (defun draw-creature (creature)
   "draws a creature visual at x y on a cell grid"
@@ -64,6 +44,18 @@
                    (+ *grid-origin-x* (* x *cell-size*))
                    (+ *grid-origin-y* (* y *cell-size*))
                    *cell-size* color)))
+
+(defun draw-cell (cell x y)
+  "draw a cell"
+  (let ((color (slot-value cell 'visual/color)))
+    (when (and (cell-discovered-p cell)
+               (not (cell-visible-p cell)))
+      (setf color (gen-alt-color (get-color color) 0.5)))
+    (draw-rectangle (+ *grid-origin-x* (* x *cell-size*))
+                    (+ *grid-origin-y* (* y *cell-size*))
+                    *cell-size*
+                    *cell-size*
+                    color)))
 
 (defun draw-cell-grid-explored (width height cells)
   "draws a rectangular grid of width x heigh cells from the top-left corner"
@@ -95,31 +87,54 @@
     (when (is-key-pressed :key-c) (setf action (list :reveal-scene T)))
     action))
 
+(deftype game-states () '(member :player-turn :ia-turn :exit))
+
+(defun game-tick (player entities scene game-state)
+  (let* ((action (handle-keys))
+         (movement (getf action :movement))
+         (exit (getf action :quit)))
+    (when (and (eql game-state :player-turn) movement)
+      (let* ((player-x (slot-value player 'location/x))
+             (player-y (slot-value player 'location/y))
+             (dx (+ player-x (car movement)))
+             (dy (+ player-y (cdr movement)))
+             (cell (get-cell scene (list dx dy))))
+        (unless (slot-value cell 'impassable/impassable)
+          (let ((target (location-occupied-p entities dx dy)))
+            ;(format t "target ~a~%" target)
+            (if (null target)
+                (progn
+                  (move player (car movement) (cdr movement))
+                  (reset-scene-visibility scene)
+                  (cast-light scene (list (slot-value player 'location/x)
+                                          (slot-value player 'location/y))))
+                (format t "Bumping into the ~A.~%" (name/name target))))
+          (setf game-state :ia-turn))))
+    (when (getf action :reveal-scene)
+      (reveal-scene scene))
+    (when exit
+      (setf game-state :exit)))
+  (when (eql game-state :ia-turn)
+    (dolist (entity entities)
+      (if (not (eql player entity))
+          (format t "The ~A idles.~%" entity)))
+    (setf game-state :player-turn))
+  game-state)
+
 (defun draw-screen (player scene)
-  (with-window (*screen-width* *screen-height* "roguelike tuto w/ raylib in cl")
-    (set-target-fps 60)
-    (loop
-      until (window-should-close)
-      do
-      (let* ((action (handle-keys))
-             (movement (getf action :movement)))
-        (when movement
-          (let* ((player-x (slot-value player 'location/x))
-                 (player-y (slot-value player 'location/y))
-                 (cells (scene/cells scene))
-                 (cell (aref cells (+ player-x (car movement)) (+ player-y (cdr movement))))
-                )
-            (unless (slot-value cell 'impassable/impassable)
-              (progn
-                (move player (car movement) (cdr movement))
-                (reset-scene-visibility scene)
-                (cast-light scene (list (slot-value player 'location/x)
-                                        (slot-value player 'location/y)))))))
-        (when (getf action :reveal-scene)
-          (reveal-scene scene))
+  (let ((game-state :player-turn))
+    (with-window (*screen-width* *screen-height* "roguelike tuto w/ raylib in cl")
+      (set-target-fps 60)
+      (loop
+        until (window-should-close)
+        do
+        (setf game-state (game-tick player *entities* scene game-state))
         (with-drawing
           (clear-background :black)
           (draw-fps 0 0)
           (draw-scene scene)
-          (run-draw-all-creatures))))))
+          (run-update-creature-visibility)
+          (run-draw-visible-creatures))
+        ;  )
+        ))))
 

@@ -5,13 +5,16 @@
 (in-package #:cl-rltuto-raylib)
 
 ;;;; creature
-(define-entity creature (location visible visual perceptive))
+(define-entity creature (location visible visual perceptive name impassable))
 
 (defmethod entity-created :after ((e creature))
-  "if a creature is invisible, it has no visual and if it has a visual, it is visible"
-  (with-slots ((visible visible/visible) (visual visual/visual)) e
+  "if a creature has a visual, it is visible"
+  (with-slots ((visible visible/visible)
+               (visual visual/visual)
+               (impassable impassable/impassable)) e
     (unless (eq visual "")
-      (setf visible T))))
+      (setf visible T))
+    (setf impassable T)))
 
 (defmethod move ((c creature) dx dy)
   "create movement in a scene"
@@ -19,14 +22,41 @@
     (setf x (+ x dx))
     (setf y (+ y dy))))
 
-(defun make-player (pos)
-  (create-entity 'creature :location/x (car pos) :location/y (cadr pos) :visual/visual "@" :visual/color :white :perceptive/perceptive T))
+(defun location-occupied-p (entities x y)
+  (dolist (entity entities)
+    (unless (null entity)
+      ;(format t "entity ~a entities ~a~%" entity entities)
+      ;(when (and (= (location/x entity) x)
+      ;           (= (location/y entity) y))
+      ;  (return entity))
+      (when (and (= (slot-value entity 'location/x) x)
+                 (= (slot-value entity 'location/y) y))
+        (return entity)
+        )
+      )))
 
-(defun make-npc (x y)
-  (create-entity 'creature :location/x x :location/y y :visual/visual "@" :visual/color :yellow))
+(defun make-player ()
+  (create-entity 'creature :visual/visual "@" :visual/color :white
+                 :perceptive/perceptive T :name/name "Player"))
 
-(defun make-wall (x y)
-  (create-entity 'creature :location/x x :location/y y :visual/visual "#" :visual/color :black))
+(defun make-npc ()
+  (create-entity 'creature :visual/visual "@" :visual/color :yellow
+                 :perceptive/perceptive T :name/name "NPC"))
+
+(defun make-troll ()
+  (create-entity 'creature :visual/visual "T" :visual/color :green
+                 :perceptive/perceptive T :name/name "Troll"))
+
+(defun make-orc ()
+  (create-entity 'creature :visual/visual "o" :visual/color :green
+                 :perceptive/perceptive T :name/name "Orc"))
+
+(defun make-wall ()
+  (create-entity 'creature :visual/visual "#" :visual/color :black :name/name "Wall"))
+
+(defmethod spawn-creature ((c creature) x y)
+  (move c x y)
+  c)
 
 ;;;; cell
 (define-entity cell (impassable opaque visible discovered terrain visual))

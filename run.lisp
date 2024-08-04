@@ -10,4 +10,3 @@
   (main) (error (c)
          (format t "~&An error occured: ~a~&" c)
          (uiop:quit 1)))
-
