@@ -5,16 +5,19 @@
 (in-package #:cl-rltuto-raylib)
 
 ;;;; creature
-(define-entity creature (location visible visual perceptive name impassable))
+(define-entity creature (location visible visual perceptive name impassable vitality power defense ai))
 
 (defmethod entity-created :after ((e creature))
   "if a creature has a visual, it is visible"
   (with-slots ((visible visible/visible)
                (visual visual/visual)
-               (impassable impassable/impassable)) e
+               (impassable impassable/impassable)
+               (max-vit vitality/maximum)
+               (curr-vit vitality/current)) e
     (unless (eq visual "")
       (setf visible T))
-    (setf impassable T)))
+    (setf impassable T)
+    (setf curr-vit max-vit)))
 
 (defmethod move ((c creature) dx dy)
   "create movement in a scene"
@@ -25,38 +28,61 @@
 (defun location-occupied-p (entities x y)
   (dolist (entity entities)
     (unless (null entity)
-      ;(format t "entity ~a entities ~a~%" entity entities)
-      ;(when (and (= (location/x entity) x)
-      ;           (= (location/y entity) y))
-      ;  (return entity))
       (when (and (= (slot-value entity 'location/x) x)
                  (= (slot-value entity 'location/y) y))
-        (return entity)
-        )
-      )))
+        (return entity)))))
 
 (defun make-player ()
   (create-entity 'creature :visual/visual "@" :visual/color :white
-                 :perceptive/perceptive T :name/name "Player"))
+                 :perceptive/perceptive T :name/name "Player" :ai/ai nil
+                 :vitality/maximum 30 :power/power 5 :defense/defense 2))
 
 (defun make-npc ()
   (create-entity 'creature :visual/visual "@" :visual/color :yellow
-                 :perceptive/perceptive T :name/name "NPC"))
+                 :perceptive/perceptive T :name/name "NPC"
+                 :vitality/maximum 1 :power/power 1 :defense/defense 1))
 
 (defun make-troll ()
   (create-entity 'creature :visual/visual "T" :visual/color :green
-                 :perceptive/perceptive T :name/name "Troll"))
+                 :perceptive/perceptive T :name/name "Troll"
+                 :vitality/maximum 16 :power/power 4 :defense/defense 1))
 
 (defun make-orc ()
   (create-entity 'creature :visual/visual "o" :visual/color :green
-                 :perceptive/perceptive T :name/name "Orc"))
+                 :perceptive/perceptive T :name/name "Orc"
+                 :vitality/maximum 10 :power/power 3 :defense/defense 0))
 
 (defun make-wall ()
-  (create-entity 'creature :visual/visual "#" :visual/color :black :name/name "Wall"))
+  (create-entity 'creature :visual/visual "#" :visual/color :black
+                 :name/name "Wall" :ai/ai nil
+                 :vitality/maximum 999 :power/power 0 :defense/defense 999))
 
 (defmethod spawn-creature ((c creature) x y)
   (move c x y)
   c)
+
+(defmethod creature-dead-p ((c creature))
+  (with-slots ((vitality vitality/current)) c
+    (<= vitality 0)))
+
+(defmethod make-corpse ((c creature))
+  (with-slots ((visual visual/visual)
+               (color visual/color)
+               (name name/name)
+               (impassable impassable/impassable)
+               (ai ai/ai)) c
+    (setf visual "%")
+    (setf color :red)
+    (setf name (concatenate 'string name " corpse"))
+    (setf impassable nil)
+    (setf ai nil)))
+
+(defmethod kill-creature ((c creature))
+  ;(format t "destroy creature ~a~%" c)
+  ;(setf *entities* (delete c *entities*))
+  ;(destroy-entity c)
+  (make-corpse c)
+  )
 
 ;;;; cell
 (define-entity cell (impassable opaque visible discovered terrain visual))

@@ -35,3 +35,16 @@
 
 (define-aspect name
                (name :initform "" :documentation "has a name"))
+
+(define-aspect vitality
+               (current :initform 0 :documentation "current vitality")
+               (maximum :initform 1 :documentation "maximum vitality"))
+
+(define-aspect power
+               (power :initform 0 :documentation "power stat value"))
+
+(define-aspect defense
+               (defense :initform 0 :documentation "defence stat value"))
+
+(define-aspect ai
+               (ai :initform T :documentation "is AI controlled"))

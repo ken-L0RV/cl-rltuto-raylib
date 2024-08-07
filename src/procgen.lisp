@@ -90,12 +90,11 @@
     creatures))
 
 (defun populate-rooms (rooms creatures max-creatures-per-room) 
-    (dolist (room rooms)
-      (let ((room-creatures (list nil)))
+  (dolist (room (cdr rooms))
+    (let ((room-creatures (list nil)))
         (gen-room-creatures room room-creatures max-creatures-per-room)
         (setf room-creatures (cdr room-creatures)) ; remove nil first elem
         (unless (null room-creatures)
-          ;(push room-creatures (cdr (last creatures)))
           (nconc creatures room-creatures)
           )))
     creatures)

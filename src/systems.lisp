@@ -17,10 +17,17 @@
           (setf visible T)
           (setf visible nil)))))
 
-(define-system draw-visible-creatures ((entity visible location))
+(define-system draw-visible-creatures ((entity visible location vitality))
   "draw all visible creatures with a position"
-  (when (visible/visible entity)
-    (draw-creature entity)))
+  (with-slots ((visible visible/visible)) entity
+    (when (and visible (not (creature-dead-p entity)))
+      (draw-creature entity))))
+
+(define-system draw-visible-corpses ((entity visible location vitality))
+  "draw all visible corpses with a position"
+  (with-slots ((visible visible/visible)) entity
+    (when (and visible (creature-dead-p entity))
+      (draw-creature entity))))
 
 (define-system log-impassable-cells ((entity impassable))
  "log all impassable cells"

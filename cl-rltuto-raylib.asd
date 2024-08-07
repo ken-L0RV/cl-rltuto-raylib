@@ -13,6 +13,7 @@
                (:file "src/systems")
                (:file "src/scene")
                (:file "src/fov-raycasting")
+               (:file "src/ai")
                (:file "src/procgen")
                (:file "src/display-raylib")
                (:file "src/cl-rltuto-raylib")))

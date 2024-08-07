@@ -34,6 +34,10 @@
     (setf rgba (alter-rgba-alpha rgba coeff))
     (build-rgba rgba)))
 
+(defun draw-game-over ()
+  "draws game over screen"
+  (draw-text "Game Over " (round (/ *screen-width* 5)) (/ *screen-height* 2) 100 :raywhite))
+
 (defun draw-creature (creature)
   "draws a creature visual at x y on a cell grid"
       (let ((visual (slot-value creature 'visual/visual))
@@ -78,6 +82,11 @@
   ;(draw-cell-grid (scene/w s) (scene/h s) (scene/cells s))
   (draw-cell-grid-explored (scene/w s) (scene/h s) (scene/cells s)))
 
+(defun update-fov (scene creature)
+  (reset-scene-visibility scene)
+  (cast-light scene (list (slot-value creature 'location/x)
+                          (slot-value creature 'location/y))))
+
 (defun handle-keys ()
   (let ((action nil))
     (when (is-key-pressed :key-right) (setf action (list :movement (cons 1 0))))
@@ -87,40 +96,6 @@
     (when (is-key-pressed :key-c) (setf action (list :reveal-scene T)))
     action))
 
-(deftype game-states () '(member :player-turn :ia-turn :exit))
-
-(defun game-tick (player entities scene game-state)
-  (let* ((action (handle-keys))
-         (movement (getf action :movement))
-         (exit (getf action :quit)))
-    (when (and (eql game-state :player-turn) movement)
-      (let* ((player-x (slot-value player 'location/x))
-             (player-y (slot-value player 'location/y))
-             (dx (+ player-x (car movement)))
-             (dy (+ player-y (cdr movement)))
-             (cell (get-cell scene (list dx dy))))
-        (unless (slot-value cell 'impassable/impassable)
-          (let ((target (location-occupied-p entities dx dy)))
-            ;(format t "target ~a~%" target)
-            (if (null target)
-                (progn
-                  (move player (car movement) (cdr movement))
-                  (reset-scene-visibility scene)
-                  (cast-light scene (list (slot-value player 'location/x)
-                                          (slot-value player 'location/y))))
-                (format t "Bumping into the ~A.~%" (name/name target))))
-          (setf game-state :ia-turn))))
-    (when (getf action :reveal-scene)
-      (reveal-scene scene))
-    (when exit
-      (setf game-state :exit)))
-  (when (eql game-state :ia-turn)
-    (dolist (entity entities)
-      (if (not (eql player entity))
-          (format t "The ~A idles.~%" entity)))
-    (setf game-state :player-turn))
-  game-state)
-
 (defun draw-screen (player scene)
   (let ((game-state :player-turn))
     (with-window (*screen-width* *screen-height* "roguelike tuto w/ raylib in cl")
@@ -128,13 +103,14 @@
       (loop
         until (window-should-close)
         do
-        (setf game-state (game-tick player *entities* scene game-state))
+        (if (eql game-state :exit)
+            (draw-game-over)
+            (setf game-state (game-tick player *entities* scene game-state)))
         (with-drawing
           (clear-background :black)
           (draw-fps 0 0)
           (draw-scene scene)
           (run-update-creature-visibility)
-          (run-draw-visible-creatures))
-        ;  )
-        ))))
+          (run-draw-visible-corpses)
+          (run-draw-visible-creatures))))))
 
