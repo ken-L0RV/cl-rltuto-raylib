@@ -7,6 +7,19 @@
         (dy (- y0 y1)))
     (sqrt (+ (expt dx 2) (expt dy 2)))))
 
+(defun check-movement (creature entities scene movement)
+  (let* ((creature-x (slot-value creature 'location/x))
+         (creature-y (slot-value creature 'location/y))
+         (dx (+ creature-x (car movement)))
+         (dy (+ creature-y (cdr movement)))
+         (cell (get-cell scene (list dx dy)))
+         (target (location-occupied-p entities dx dy)))
+    (cond (target (when (creature? target)
+                    (when (slot-value target 'impassable/impassable)
+                      target)))
+          ((not (null (slot-value cell 'impassable/impassable))) T)
+          (T nil))))
+
 (defmethod move-towards ((c creature) tx ty scene entities)
   (with-slots ((x location/x) (y location/y)) c
     (let* ((dx (- tx x))
@@ -14,9 +27,9 @@
            (distance (sqrt (+ (expt dx 2) (+ (expt dy 2))))))
       (setf dx (round (/ dx distance)))
       (setf dy (round (/ dy distance)))
-      (let ((cell (get-cell scene (list (+ x dx) (+ y dy))))
-            (target (location-occupied-p entities (+ x dx) (+ y dy))))
-        (unless (or (slot-value cell 'impassable/impassable) target)
+      (unless (= (+ (abs dx) (abs dy)) 1) (setf dy 0)) ; manage occasional diagonal movement
+      (let ((is-blocked (check-movement c entities scene (cons dx dy))))
+        (unless is-blocked
           (list :movement (cons dx dy)))))))
 
 (defmethod chose-action ((c creature) scene entities)
@@ -32,11 +45,11 @@
                (distance (ceiling (get-distance x y tx ty))))
           (cond ((>= distance 2)
                  (progn
-                   (format t "The ~A sees that the ~A is out of range at distance ~a.~%" c target distance)
+                   ;(format t "The ~A sees that the ~A is out of range at distance ~a.~%" c target distance)
                    (setf action (move-towards c tx ty scene entities))))
                 ((< distance 2)
                  (progn
-                   (format t "The ~A sees that the ~A is in range at distance ~a.~%" c target distance)
+                   ;(format t "The ~A sees that the ~A is in range at distance ~a.~%" c target distance)
                    (setf action (list :melee-attack (cons c target)))))))
         (setf action (list :wait T)))
       ;(format t "~A action ~a~%" c action)

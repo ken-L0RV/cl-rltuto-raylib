@@ -22,6 +22,10 @@
                 #:draw-fps
                 #:draw-text
                 #:draw-rectangle
+                #:get-mouse-position
                 #:get-color
                 #:make-rgba)
+  (:import-from #:3d-vectors
+                #:vx
+                #:vy)
   (:export #:main))

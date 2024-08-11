@@ -95,6 +95,5 @@
         (gen-room-creatures room room-creatures max-creatures-per-room)
         (setf room-creatures (cdr room-creatures)) ; remove nil first elem
         (unless (null room-creatures)
-          (nconc creatures room-creatures)
-          )))
+          (nconc creatures room-creatures))))
     creatures)

@@ -31,7 +31,8 @@
                (vertices :initform nil :documentation "list of a shape vertices (x,y)"))
 
 (define-aspect perceptive
-               (perceptive :initform nil :documentation "can perceive its environment"))
+               (perceptive :initform nil :documentation "can perceive its environment")
+               (radius :initform 7 :documentation "perception radius"))
 
 (define-aspect name
                (name :initform "" :documentation "has a name"))

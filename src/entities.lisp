@@ -19,15 +19,48 @@
     (setf impassable T)
     (setf curr-vit max-vit)))
 
+(defmethod creature-dead-p ((c creature))
+  (with-slots ((vitality vitality/current)) c
+    (<= vitality 0)))
+
+(defmethod make-corpse ((c creature))
+  (with-slots ((visual visual/visual)
+               (color visual/color)
+               (name name/name)
+               (impassable impassable/impassable)
+               (ai ai/ai)) c
+    (setf visual "%")
+    (setf color :red)
+    (setf name (concatenate 'string name " corpse"))
+    (setf impassable nil)
+    (setf ai nil)))
+
+(defmethod kill-creature ((c creature))
+  ;(format t "destroy creature ~a~%" c)
+  ;(setf *entities* (delete c *entities*))
+  ;(destroy-entity c)
+  (make-corpse c))
+
 (defmethod move ((c creature) dx dy)
   "create movement in a scene"
   (with-slots ((x location/x) (y location/y)) c
     (setf x (+ x dx))
     (setf y (+ y dy))))
 
+(defmethod creature-location ((c creature))
+  (with-slots ((x location/x) (y location/y)) c
+    (list x y)))
+
 (defun location-occupied-p (entities x y)
   (dolist (entity entities)
-    (unless (null entity)
+    (unless (or (null entity) (creature-dead-p entity))
+      (when (and (= (slot-value entity 'location/x) x)
+                 (= (slot-value entity 'location/y) y))
+        (return entity)))))
+
+(defun location-occupant (entities x y)
+  (dolist (entity entities)
+    (unless (or (null entity))
       (when (and (= (slot-value entity 'location/x) x)
                  (= (slot-value entity 'location/y) y))
         (return entity)))))
@@ -60,29 +93,6 @@
 (defmethod spawn-creature ((c creature) x y)
   (move c x y)
   c)
-
-(defmethod creature-dead-p ((c creature))
-  (with-slots ((vitality vitality/current)) c
-    (<= vitality 0)))
-
-(defmethod make-corpse ((c creature))
-  (with-slots ((visual visual/visual)
-               (color visual/color)
-               (name name/name)
-               (impassable impassable/impassable)
-               (ai ai/ai)) c
-    (setf visual "%")
-    (setf color :red)
-    (setf name (concatenate 'string name " corpse"))
-    (setf impassable nil)
-    (setf ai nil)))
-
-(defmethod kill-creature ((c creature))
-  ;(format t "destroy creature ~a~%" c)
-  ;(setf *entities* (delete c *entities*))
-  ;(destroy-entity c)
-  (make-corpse c)
-  )
 
 ;;;; cell
 (define-entity cell (impassable opaque visible discovered terrain visual))
