@@ -5,7 +5,7 @@
 (in-package #:cl-rltuto-raylib)
 
 ;;;; creature
-(define-entity creature (location visible visual perceptive name impassable vitality power defense ai))
+(define-entity creature (location visible visual perceptive name impassable vitality power defense ai inventory))
 
 (defmethod entity-created :after ((e creature))
   "if a creature has a visual, it is visible"
@@ -13,11 +13,46 @@
                (visual visual/visual)
                (impassable impassable/impassable)
                (max-vit vitality/maximum)
-               (curr-vit vitality/current)) e
+               (curr-vit vitality/current)
+               (num-slots inventory/num-slots)
+               (slots inventory/slots)) e
     (unless (eq visual "")
       (setf visible T))
     (setf impassable T)
-    (setf curr-vit max-vit)))
+    (setf curr-vit max-vit)
+    (setf slots (make-array (list num-slots)))
+    ))
+
+(defmethod change-creature-vitality ((c creature) amount)
+  (with-slots ((c-vit vitality/current) (m-vit vitality/maximum)) c
+    (let ((new-vit (+ c-vit amount))
+          (o-c-vit c-vit))
+      (cond ((> new-vit m-vit) (setf c-vit m-vit))
+            ((< new-vit 0) (setf c-vit 0))
+            (T (setf c-vit new-vit)))
+      (- c-vit o-c-vit))))
+
+(defmethod damage-vitality ((c creature) amount)
+  (with-slots ((vit vitality/current)) c
+    (change-creature-vitality c (* amount -1))))
+
+(defmethod heal-vitality ((c creature) amount)
+  (with-slots ((vit vitality/current)) c
+    (change-creature-vitality c amount)))
+
+(defmethod attack-creature ((attacker creature) (defender creature))
+  (with-slots ((a-power power/power) (a-name name/name)) attacker
+    (with-slots ((d-defense defense/defense) (d-vit vitality/current) (d-name name/name)) defender
+     (let ((damage (- a-power d-defense)))
+       ;(damage-vitality defender damage)
+       ;(format nil "The ~A attacks the ~A for ~a damage." a-name d-name damage)))))
+       (format nil "The ~A attacks the ~A for ~a damage." a-name d-name (abs (damage-vitality defender damage)))))))
+
+(defmethod heal-creature ((target creature) amount)
+  (with-slots ((c-vit vitality/current) (m-vit vitality/maximum) (name name/name)) target
+    (if (= c-vit m-vit)
+        nil
+        (format nil "The ~A heals for ~a." name (heal-vitality target amount)))))
 
 (defmethod creature-dead-p ((c creature))
   (with-slots ((vitality vitality/current)) c
@@ -47,6 +82,10 @@
     (setf x (+ x dx))
     (setf y (+ y dy))))
 
+(defmethod spawn-creature ((c creature) x y)
+  (move c x y)
+  c)
+
 (defmethod creature-location ((c creature))
   (with-slots ((x location/x) (y location/y)) c
     (list x y)))
@@ -65,10 +104,20 @@
                  (= (slot-value entity 'location/y) y))
         (return entity)))))
 
+(defmethod inventory-free-slot ((c creature))
+  (with-slots ((num-slots inventory/num-slots) (slots inventory/slots)) c
+    ;(format t "n-slot ~a slots ~a~%" num-slots slots)
+    (dotimes (n num-slots)
+      (let ((item (aref slots n)))
+        ;(format t "inventory ~a item ~a~%" n item)
+        (unless (item? item)
+          (return n))))))
+
 (defun make-player ()
   (create-entity 'creature :visual/visual "@" :visual/color :white
                  :perceptive/perceptive T :name/name "Player" :ai/ai nil
-                 :vitality/maximum 30 :power/power 5 :defense/defense 2))
+                 :vitality/maximum 30 :power/power 5 :defense/defense 2
+                 :inventory/num-slots 4))
 
 (defun make-npc ()
   (create-entity 'creature :visual/visual "@" :visual/color :yellow
@@ -89,10 +138,6 @@
   (create-entity 'creature :visual/visual "#" :visual/color :black
                  :name/name "Wall" :ai/ai nil
                  :vitality/maximum 999 :power/power 0 :defense/defense 999))
-
-(defmethod spawn-creature ((c creature) x y)
-  (move c x y)
-  c)
 
 ;;;; cell
 (define-entity cell (impassable opaque visible discovered terrain visual))
@@ -201,3 +246,52 @@
 (defmethod corridor-end ((c corridor))
   (with-slots ((v shape/vertices)) c
     (cadadr v)))
+
+(define-entity item (name location visible visual consumable charges potency))
+
+(defun location-item (items x y)
+  (dolist (item items)
+    ;(format t "item ~a~%" item)
+    (unless (null item)
+      (let ((ix (location/x item))
+            (iy (location/y item)))
+        (unless (or (null ix) (null iy))
+          (when (and (= ix x)
+                     (= iy y))
+            (return item)))))))
+
+(defun location-furnished-p (entities x y)
+  (dolist (entity entities)
+    (unless (null entity)
+      (when (and (= (slot-value entity 'location/x) x)
+                 (= (slot-value entity 'location/y) y))
+        (return entity)))))
+
+(defmethod spawn-item ((i item) dx dy)
+  (with-slots ((x location/x) (y location/y)) i
+    (setf x (+ x dx))
+    (setf y (+ y dy)))
+  i)
+
+(defun make-potion (id)
+  (cond ((= id 1)
+         (create-entity 'item :name/name "Small vitality potion"
+                        :visual/visual "!" :visual/color :purple
+                        :consumable/consumable T :charges/number 1 :potency/potency 4))
+        (T
+         (format t "unrecognized potion id ~a~%" id))))
+
+(defmethod use-potion ((i item) id target)
+  (let ((results (list T)))
+    (cond ((= id 1)
+           (setf results (use-potion-vit-1 i target)))
+          (T
+           (format t "unrecognized potion kind~%")))
+    results))
+
+(defmethod use-potion-vit-1 ((i item) (c creature))
+  (with-slots ((i-charges charges/number) (i-potency potency/potency)) i
+    (let ((new-charges (- i-charges 1))
+          (result (heal-creature c i-potency)))
+      (list new-charges result))))
+

@@ -14,6 +14,25 @@
 (defun screen-to-cell (p p-origin)
   (+ p-origin (floor (/ (- p *cell-size*) *cell-size*))))
 
+(defun draw-creature-inventory (creature)
+  "draws the message inventory"
+  (let ((num-slots (inventory/num-slots creature))
+        (slots (inventory/slots creature))
+        (i-name nil))
+    (dotimes (s num-slots)
+      (let ((slot (aref slots s)))
+        ;(format t "slot ~a type-of ~a item? ~a~%" slot (type-of slot) (item? slot))
+        (if (item? slot)
+            (let ((name (slot-value slot 'name/name)))
+              (setf i-name name))
+            (setf i-name ""))
+        ;(format t "name ~a~%" i-name)
+        (draw-text (format nil "~A" i-name)
+                   (+ *ui-origin-x* (* *cell-size* 1))
+                   (+ *grid-origin-y* (* *cell-size* 3) (* *cell-size* s))
+                   15 ;*cell-size*
+                   :white)))))
+
 (defun update-cursor-focus ()
   "draws the name of the entity under cursor focus"
   (let* ((c-pos (get-mouse-position))
@@ -105,6 +124,7 @@
   (draw-creature-health-bar creature)
   (draw-creature-health creature)
   (draw-creature-name creature)
+  (draw-creature-inventory creature)
   (draw-cursor-focus *cursor-focus-message*)
   (draw-message-log *drawn-messages* *max-drawn-messages*))
 

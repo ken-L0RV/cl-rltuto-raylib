@@ -49,3 +49,16 @@
 
 (define-aspect ai
                (ai :initform T :documentation "is AI controlled"))
+
+(define-aspect consumable
+               (consumable :initform nil :documentation "can be consumed"))
+
+(define-aspect charges
+               (number :initform 1 :documentation "has charges"))
+
+(define-aspect potency
+               (potency :initform 0 :documentation "has a potency"))
+
+(define-aspect inventory
+               (num-slots :initform 0 :documentation "max number of held items")
+               (slots :documentation "held items"))
