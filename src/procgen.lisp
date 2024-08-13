@@ -105,7 +105,9 @@
             (y (+ (random (- (rectangle-y2 room) (rectangle-y1 room) 1)) (1+ (rectangle-y1 room)))))
         (unless (or (location-furnished-p items x y)
                     (location-occupied-p *entities* x y))
-          (push (spawn-item (make-potion 1) x y) (cdr (last items))))))
+          (if (< (random 100) 70)
+              (push (spawn-item (make-item 1) x y) (cdr (last items)))
+              (push (spawn-item (make-item 2) x y) (cdr (last items)))))))
     items))
 
 (defun furnish-rooms (rooms items max-items-per-room)

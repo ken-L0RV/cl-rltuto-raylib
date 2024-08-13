@@ -35,7 +35,8 @@
                (radius :initform 7 :documentation "perception radius"))
 
 (define-aspect name
-               (name :initform "" :documentation "has a name"))
+               (name :initform "" :documentation "has a name")
+               (id :initform 0 :documentation "has an unique id"))
 
 (define-aspect vitality
                (current :initform 0 :documentation "current vitality")
@@ -62,3 +63,7 @@
 (define-aspect inventory
                (num-slots :initform 0 :documentation "max number of held items")
                (slots :documentation "held items"))
+
+(define-aspect effect
+               (effect :documentation "has an effect on the world")
+               (target :documentation "effect target"))

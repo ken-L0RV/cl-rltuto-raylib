@@ -36,8 +36,9 @@
     (setf *messages* (list (list :message (format nil "~A spawned." (slot-value *player* 'name/name)))))
     (setf spawn-coords (find-center-rectangle-room spawn))
     (push player (cdr (last *entities*)))
-    (push (spawn-item (make-potion 1) (1+ (car spawn-coords)) (cadr spawn-coords)) (cdr (last *items*)))
-    (push (spawn-item (make-potion 1) (1+ (1+ (car spawn-coords))) (cadr spawn-coords)) (cdr (last *items*)))
+    (push (spawn-item (make-item 1) (1+ (car spawn-coords)) (cadr spawn-coords)) (cdr (last *items*)))
+    (push (spawn-item (make-item 3) (1+ (1+ (car spawn-coords))) (cadr spawn-coords)) (cdr (last *items*)))
+    (push (spawn-item (make-item 2) (car spawn-coords) (1+ (cadr spawn-coords))) (cdr (last *items*)))
     (spawn-creature player (car spawn-coords) (cadr spawn-coords))))
 
 (defmethod init-scene-cells ((s scene))
@@ -78,15 +79,14 @@
 (defun melee-action (attacker defender)
   (let ((results (list T)))
     (push (list :message (attack-creature attacker defender)) (cdr (last results)))
-    (if (creature-dead-p defender)
-        (progn
-          (push (list :message (format nil "The ~a dies." (name/name defender))) (cdr (last results)))
-          (kill-creature defender))
-        (progn
-          (push (list :message (format nil "The ~A has ~a vitality left." (name/name defender) (vitality/current defender))) (cdr (last results)))))
+    (push (list :message (check-vitality defender)) (cdr (last results)))
+    ;(if (creature-dead-p defender)
+    ;    (progn
+    ;      (push (list :message (format nil "The ~a dies." (name/name defender))) (cdr (last results)))
+    ;      (kill-creature defender))
+    ;    (progn
+    ;      (push (list :message (format nil "The ~A has ~a vitality left." (name/name defender) (vitality/current defender))) (cdr (last results)))))
     results))
-
-;((push (list :message (format nil "The ~A inventory is full." (name/name creature))) (cdr (last results))))
 
 (defun pickup-action (creature)
   ;(format t "inventory ~a~%" (inventory/slots creature))
@@ -128,8 +128,13 @@
   (let* ((results (list T))
         (target-item (aref (inventory/slots creature) slot)))
     (if (item? target-item)
-        (let ((result (use-potion target-item 1 creature)))
-          (push (list :message (cadr result)) (cdr (last results)))
+        (let ((result (use-item target-item (name/id target-item) creature)))
+          ;(format t "result ~a~%" result)
+          ;(format t "type-of result ~a~%" (type-of result))
+          (dolist (r (cdr result))
+            ;(format t "r ~a~%" r)
+            (push (list :message r) (cdr (last results))))
+
           (when (<= (car result) 0)
             (progn
               (push (list :message (format nil "The ~A is consumed." (name/name target-item))) (cdr (last results)))
@@ -137,6 +142,7 @@
               (destroy-entity target-item)))
           ))
     ;(format t "updt inventory ~a~%" (inventory/slots creature))
+    (format t "results ~a~%" results)
     results))
 
 (defun enact-action (creature entities scene action)

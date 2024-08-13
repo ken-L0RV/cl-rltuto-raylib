@@ -14,23 +14,31 @@
 (defun screen-to-cell (p p-origin)
   (+ p-origin (floor (/ (- p *cell-size*) *cell-size*))))
 
+
+(defun cursor-cell ()
+  (let* ((c-pos (get-mouse-position))
+          (sx-pos (screen-to-cell (vx c-pos) *v-origin-x*))
+          (sy-pos (screen-to-cell (vy c-pos) *v-origin-y*))
+          (cell (get-cell *main-scene* (list sx-pos sy-pos))))
+    (list sx-pos sy-pos cell)))
+
 (defun draw-creature-inventory (creature)
   "draws the message inventory"
   (let ((num-slots (inventory/num-slots creature))
-        (slots (inventory/slots creature))
-        (i-name nil))
+        (slots (inventory/slots creature)))
     (dotimes (s num-slots)
-      (let ((slot (aref slots s)))
+      (let ((slot (aref slots s))
+            (msg ""))
         ;(format t "slot ~a type-of ~a item? ~a~%" slot (type-of slot) (item? slot))
-        (if (item? slot)
+        (when (item? slot)
             (let ((name (slot-value slot 'name/name)))
-              (setf i-name name))
-            (setf i-name ""))
+              (setf msg (format nil "~a: ~A" (1+ s) name))))
         ;(format t "name ~a~%" i-name)
-        (draw-text (format nil "~A" i-name)
+        (draw-text msg
                    (+ *ui-origin-x* (* *cell-size* 1))
                    (+ *grid-origin-y* (* *cell-size* 3) (* *cell-size* s))
-                   15 ;*cell-size*
+                   *cell-size*
+                   ;15
                    :white)))))
 
 (defun update-cursor-focus ()
@@ -38,11 +46,18 @@
   (let* ((c-pos (get-mouse-position))
          (sx-pos (screen-to-cell (vx c-pos) *v-origin-x*))
          (sy-pos (screen-to-cell (vy c-pos) *v-origin-y*))
-         (target (location-occupant *entities* sx-pos sy-pos)))
-    (if target
-        (let ((name (slot-value target 'name/name)))
-          (setf *cursor-focus-message* name))
-        (setf *cursor-focus-message* ""))))
+         (target (location-occupant *entities* sx-pos sy-pos))
+         (item (location-item *items* sx-pos sy-pos))) 
+    (cond (target
+            (let ((name (slot-value target 'name/name)))
+              (setf *cursor-focus-message* name)))
+          (item
+           (let ((name (slot-value item 'name/name)))
+             (setf *cursor-focus-message* name)))
+          (T
+           (setf *cursor-focus-message* ""))
+          )
+    ))
 
 (defun draw-cursor-focus (message)
   "draws the message log box"

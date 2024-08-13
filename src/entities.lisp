@@ -43,16 +43,25 @@
 (defmethod attack-creature ((attacker creature) (defender creature))
   (with-slots ((a-power power/power) (a-name name/name)) attacker
     (with-slots ((d-defense defense/defense) (d-vit vitality/current) (d-name name/name)) defender
-     (let ((damage (- a-power d-defense)))
-       ;(damage-vitality defender damage)
-       ;(format nil "The ~A attacks the ~A for ~a damage." a-name d-name damage)))))
-       (format nil "The ~A attacks the ~A for ~a damage." a-name d-name (abs (damage-vitality defender damage)))))))
+     (let ((results (list T))
+           (damage (- a-power d-defense)))
+       (damage-vitality defender damage)
+       (format nil "The ~A attacks the ~A for ~a damage." a-name d-name damage)))))
 
 (defmethod heal-creature ((target creature) amount)
   (with-slots ((c-vit vitality/current) (m-vit vitality/maximum) (name name/name)) target
     (if (= c-vit m-vit)
         nil
         (format nil "The ~A heals for ~a." name (heal-vitality target amount)))))
+
+(defun check-vitality (creature)
+  (let ((result))
+    (if (creature-dead-p creature)
+        (progn
+          (setf result (format nil "The ~a dies." (name/name creature)))
+          (kill-creature creature))
+        (setf result (format nil "The ~A has ~a vitality left." (name/name creature) (vitality/current creature))))
+    result))
 
 (defmethod creature-dead-p ((c creature))
   (with-slots ((vitality vitality/current)) c
@@ -247,7 +256,7 @@
   (with-slots ((v shape/vertices)) c
     (cadadr v)))
 
-(define-entity item (name location visible visual consumable charges potency))
+(define-entity item (name location visible visual consumable charges potency effect))
 
 (defun location-item (items x y)
   (dolist (item items)
@@ -273,25 +282,142 @@
     (setf y (+ y dy)))
   i)
 
-(defun make-potion (id)
+(defun make-item (id)
   (cond ((= id 1)
-         (create-entity 'item :name/name "Small vitality potion"
+         (create-entity 'item :name/name "Small vitality potion" :name/id id
                         :visual/visual "!" :visual/color :purple
                         :consumable/consumable T :charges/number 1 :potency/potency 4))
+        ((= id 2)
+         (create-entity 'item :name/name "Lightning scroll" :name/id id
+                        :visual/visual "#" :visual/color :yellow
+                        :consumable/consumable T :charges/number 1
+                        :effect/effect #'use-scroll-1 :effect/target '(:potency 20 :range 5)))
+        ((= id 3)
+         (create-entity 'item :name/name "Fireball scroll" :name/id id
+                        :visual/visual "#" :visual/color :red
+                        :consumable/consumable T :charges/number 1
+                        :effect/effect #'use-scroll-2 :effect/target '(:potency 15 :range 5 :area 7)))
         (T
          (format t "unrecognized potion id ~a~%" id))))
 
-(defmethod use-potion ((i item) id target)
+(defmethod use-item ((i item) id target)
   (let ((results (list T)))
+    ;(format t "item ~a id ~a creature ~a~%" i id target)
     (cond ((= id 1)
-           (setf results (use-potion-vit-1 i target)))
+           (setf results (use-item-vit-1 i target)))
+          ((= id 2)
+           (progn
+             (format t "effect ~a target ~a~%"(effect/effect i) (effect/target i))
+             (setf results (funcall (effect/effect i) i target :args (append (effect/target i) (list :entities *entities*))))))
+          ((= id 3)
+           (progn
+             (format t "effect ~a target ~a~%"(effect/effect i) (effect/target i))
+             (setf results (funcall (effect/effect i) i target :args (append (effect/target i) (list :entities *entities*))))))
           (T
            (format t "unrecognized potion kind~%")))
     results))
 
-(defmethod use-potion-vit-1 ((i item) (c creature))
+(defmethod use-item-vit-1 ((i item) (c creature))
   (with-slots ((i-charges charges/number) (i-potency potency/potency)) i
-    (let ((new-charges (- i-charges 1))
-          (result (heal-creature c i-potency)))
-      (list new-charges result))))
+    (let ((result (heal-creature c i-potency)))
+      (when result
+        (setf i-charges (- i-charges 1)))
+      (list i-charges result))))
+
+(defun use-scroll-1 (scroll caster &key args)
+  (let* ((potency (getf args :potency))
+         (range (getf args :range))
+         (entities (getf args :entities))
+         (charges (charges/number scroll))
+         (result nil)
+         (target-result nil)
+         (o-loc-x (location/x caster))
+         (o-loc-y (location/y caster))
+         (closest (1+ range))
+         (target nil))
+    ;(format t "func item ~a caster ~a~%" scroll caster)
+    ;(format t "potency ~a~%" potency)
+    ;(format t "range ~a~%" range)
+    ;(format t "entities ~a~%" entities)
+    (dolist (entity entities)
+      (let ((visible (visible/visible entity)))
+        (when (and visible (not (eql entity caster)) (not (creature-dead-p entity)))
+          (let* ((e-loc-x (location/x entity))
+                 (e-loc-y (location/y entity))
+                 (distance (get-distance o-loc-x o-loc-y e-loc-x e-loc-y)))
+            ;(format t "caster x y (~a,~a) " o-loc-x o-loc-y)
+            ;(format t "entity x y (~a,~a) " e-loc-x e-loc-y)
+            ;(format t "distance ~a~%" distance)
+            (when (< distance closest)
+              (progn
+                (setf target entity)
+                (setf closest distance)
+                (format t "new target ~a~%" target)))))))
+    (if target
+        (progn
+          (setf charges (- charges 1))
+          (setf result (format nil "A lightning bolt strikes the ~A for ~a damage." (name/name target) (abs (damage-vitality target potency))))
+          (setf target-result (check-vitality target)))
+        (setf result (format nil "Nothing to target.")))
+    (append (list charges result) (list target-result))))
+
+(defun use-scroll-2 (scroll caster &key args)
+  (let* ((potency (getf args :potency))
+         (range (getf args :range))
+         (area (getf args :area))
+         (entities (getf args :entities))
+         (charges (charges/number scroll))
+         (o-loc-x (location/x caster))
+         (o-loc-y (location/y caster))
+         (area-origin nil)
+         (res1 nil)
+         (res2 nil)
+         (target-result nil)
+         (targets nil))
+    (loop while (null area-origin)
+          do
+          (let* ((cursor (cursor-cell))
+                 (cx (car cursor))
+                 (cy (cadr cursor))
+                 (cell (caddr cursor)))
+            ;(format t "cursor ~a~%" cursor)
+            (when (<= (get-distance o-loc-x o-loc-y cx cy) range)
+              (setf area-origin (list cx cy)))))
+    (dolist (entity entities)
+      (when (not (creature-dead-p entity))
+        (let* ((e-loc-x (location/x entity))
+               (e-loc-y (location/y entity))
+               (x (car area-origin))
+               (y (cadr area-origin))
+               (distance (get-distance x y e-loc-x e-loc-y)))
+          (when (<= distance area)
+            (progn
+              (if (null targets)
+                  (setf targets (list entity))
+                  (push entity (cdr (last targets)))))))))
+    ;(format t "targets ~a~%" targets)
+    (if targets
+        (progn
+          (setf charges (- charges 1))
+
+          (setf res1 (format nil "A fireball explodes !."))
+
+          (dolist (targ targets)
+            (setf target-result (format nil "The ~A takes ~a damage." (name/name targ) (abs (damage-vitality targ potency))))
+            ;(format t "target-result ~a~%" target-result)
+
+            ;(format t "res2 a ~a~%" res2)
+            (if (null res2)
+              (setf res2 (list target-result))
+              (push target-result (cdr (last res2))))
+            ;(format t "res2 b ~a~%" res2)
+
+            (setf target-result (check-vitality targ))
+            (push target-result (cdr (last res2)))))
+        (setf result (format nil "No targets.")))
+
+    ;(format t "golden ~a~%" (append (list charges res1)i res2))
+
+    (append (list charges res1) res2)
+    ))
 
